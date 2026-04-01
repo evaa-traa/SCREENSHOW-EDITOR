@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 temp/
 output/
+uploads/
 *.egg-info/
 dist/
 build/
+venv/

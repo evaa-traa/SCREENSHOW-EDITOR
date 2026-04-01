@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Shorts Editor</title>
+    <meta name="description" content="Automatically convert videos into YouTube Shorts format with captions, music, tint overlays, and watermarks.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --bg-surface: #16213e;
+            --bg-input: #0d0d1a;
+            --accent: #e94560;
+            --accent-hover: #ff6b81;
+            --text: #eaeaea;
+            --text-muted: #8d8d9b;
+            --text-dim: #555566;
+            --border: #2a2a4a;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --radius: 10px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 30px 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 540px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 28px 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            border: 1px solid var(--border);
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            margin-bottom: 14px;
+            border: 1px solid var(--border);
+        }
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: var(--text);
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .upload-area:hover { border-color: var(--accent); background: rgba(233,69,96,0.05); }
+        .upload-area.has-file { border-color: var(--success); border-style: solid; }
+        .upload-area .icon { font-size: 32px; margin-bottom: 8px; }
+        .upload-area .label { font-size: 14px; color: var(--text-muted); }
+        .upload-area .filename { font-size: 13px; color: var(--success); margin-top: 6px; font-weight: 500; }
+        #videoInput { display: none; }
+
+        /* Video Info */
+        .video-info {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border-radius: 6px;
+            display: none;
+        }
+
+        /* Options */
+        .option-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            gap: 10px;
+        }
+        .option-row + .option-row { border-top: 1px solid rgba(255,255,255,0.04); }
+
+        /* Toggle switch */
+        .toggle {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle .slider {
+            position: absolute; inset: 0;
+            background: var(--bg-input);
+            border-radius: 22px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid var(--border);
+        }
+        .toggle .slider::before {
+            content: '';
+            position: absolute;
+            width: 16px; height: 16px;
+            left: 2px; top: 2px;
+            background: var(--text-dim);
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        .toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+        .toggle input:checked + .slider::before { transform: translateX(18px); background: white; }
+
+        .option-label {
+            font-size: 13px;
+            flex: 1;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        /* Sub-controls */
+        .sub-controls {
+            padding: 8px 0 8px 50px;
+            display: none;
+        }
+        .sub-controls.visible { display: block; }
+
+        .sub-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .sub-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            min-width: 60px;
+        }
+
+        /* Inputs */
+        input[type="text"], select {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+        input[type="text"] { width: 180px; }
+        select { min-width: 130px; cursor: pointer; }
+        select option { background: var(--bg-card); }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--border);
+            border-radius: 4px;
+            outline: none;
+            width: 120px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px; height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .range-val {
+            font-size: 11px;
+            color: var(--text-dim);
+            min-width: 30px;
+        }
+
+        /* File pick button */
+        .file-pick {
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .file-pick:hover { border-color: var(--accent); color: var(--text); }
+        .file-pick-name {
+            font-size: 11px;
+            color: var(--text-muted);
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Radio */
+        .radio-group { display: flex; flex-direction: column; gap: 6px; }
+        .radio-row { display: flex; align-items: center; gap: 8px; }
+        .radio-row input[type="radio"] { accent-color: var(--accent); }
+        .radio-row label { font-size: 12px; color: var(--text-muted); cursor: pointer; }
+
+        /* Process button */
+        .process-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.2s;
+            letter-spacing: 0.3px;
+        }
+        .process-btn:hover { background: var(--accent-hover); }
+        .process-btn:disabled {
+            background: var(--bg-surface);
+            color: var(--text-dim);
+            cursor: not-allowed;
+        }
+
+        /* Progress */
+        .progress-section {
+            margin-top: 16px;
+            display: none;
+        }
+        .progress-section.visible { display: block; }
+        .progress-bar-bg {
+            height: 6px;
+            background: var(--bg-input);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 6px;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        .progress-status {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Result */
+        .result-section {
+            margin-top: 16px;
+            text-align: center;
+            display: none;
+        }
+        .result-section.visible { display: block; }
+        .download-btn {
+            display: inline-block;
+            padding: 12px 28px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+        .download-btn:hover { opacity: 0.85; }
+        .result-msg {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* Error */
+        .error-box {
+            background: rgba(231,76,60,0.1);
+            border: 1px solid var(--error);
+            border-radius: 6px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: #f1a9a0;
+            margin-top: 12px;
+            display: none;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .error-box.visible { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎬 AI Shorts Editor</h1>
+            <p>Upload → Configure → Export Shorts-ready video</p>
+        </div>
+
+        <form id="editorForm" enctype="multipart/form-data">
+            <!-- Upload -->
+            <div class="card">
+                <div class="card-title">📁 Video Input</div>
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('videoInput').click()">
+                    <div class="icon">📤</div>
+                    <div class="label" id="uploadLabel">Click to select video file</div>
+                    <div class="filename" id="uploadFilename"></div>
+                </div>
+                <input type="file" id="videoInput" name="video" accept=".mp4,.mkv,.avi,.mov,.webm,.flv,.wmv">
+                <div class="video-info" id="videoInfo"></div>
+            </div>
+
+            <!-- Options -->
+            <div class="card">
+                <div class="card-title">⚙️ Editing Options</div>
+
+                <!-- Crop -->
+                <div class="option-row">
+                    <label class="toggle"><input type="checkbox" id="cropToggle" checked><span class="slider"></span></label>
+                    <label class="option-label" for="cropToggle">Crop to Shorts (9:16)</label>
+                </div>
+                <div class="sub-controls visible" id="cropControls">
+                    <div class="sub-row">
+                        <span class="sub-label">Position:</span>
+                        <input type="range" id="cropPosition" min="0" max="1" step="0.05" value="0.5">
+                        <span class="range-val" id="cropPosLabel">Center</span>
+                    </div>
+                </div>
+
+                <!-- Tint -->
+                <div class="option-row">
+                    <label class="toggle"><input type="checkbox" id="tintToggle"><span class="slider"></span></label>
+                    <label class="option-label" for="tintToggle">Add Tint Overlay</label>
+                </div>
+                <div class="sub-controls" id="tintControls">
+                    <div class="sub-row">
+                        <span class="sub-label">Color:</span>
+                        <select id="tintColor">
+                            <option value="#FF8C00">Warm Amber</option>
+                            <option value="#1E90FF">Cool Blue</option>
+                            <option value="#008080">Cinematic Teal</option>
+                            <option value="#FF4500">Sunset Red</option>
+                            <option value="#8A2BE2">Purple Haze</option>
+                            <option value="#00FF41">Green Matrix</option>
+                            <option value="#704214">Sepia</option>
+                            <option value="#FF69B4">Pink Glow</option>
+                            <option value="#000000">Dark Vignette</option>
+                        </select>
+                    </div>
+                    <div class="sub-row">
+                        <span class="sub-label">Opacity:</span>
+                        <input type="range" id="tintOpacity" min="0.05" max="0.5" step="0.05" value="0.2">
+                        <span class="range-val" id="tintOpacityLabel">20%</span>
+                    </div>
+                </div>
+
+                <!-- Music -->
+                <div class="option-row">
+                    <label class="toggle"><input type="checkbox" id="musicToggle"><span class="slider"></span></label>
+                    <label class="option-label" for="musicToggle">Add Background Music</label>
+                </div>
+                <div class="sub-controls" id="musicControls">
+                    <div class="sub-row">
+                        <button type="button" class="file-pick" onclick="document.getElementById('musicInput').click()">Select Music</button>
+                        <span class="file-pick-name" id="musicFilename">No file</span>
+                        <input type="file" id="musicInput" name="music" accept=".mp3,.wav,.aac,.m4a,.ogg,.flac" style="display:none">
+                    </div>
+                </div>
+
+                <!-- Watermark -->
+                <div class="option-row">
+                    <label class="toggle"><input type="checkbox" id="watermarkToggle" checked><span class="slider"></span></label>
+                    <label class="option-label" for="watermarkToggle">Channel Name Watermark</label>
+                </div>
+                <div class="sub-controls visible" id="watermarkControls">
+                    <div class="sub-row">
+                        <span class="sub-label">Name:</span>
+                        <input type="text" id="channelName" placeholder="Your Channel Name">
+                    </div>
+                </div>
+
+                <!-- Captions -->
+                <div class="option-row">
+                    <label class="toggle"><input type="checkbox" id="captionsToggle"><span class="slider"></span></label>
+                    <label class="option-label" for="captionsToggle">Add Captions</label>
+                </div>
+                <div class="sub-controls" id="captionsControls">
+                    <div class="radio-group">
+                        <div class="radio-row">
+                            <input type="radio" name="captionMode" id="captionAuto" value="auto" checked>
+                            <label for="captionAuto">Auto-generate (Groq Whisper)</label>
+                        </div>
+                        <div class="radio-row">
+                            <input type="radio" name="captionMode" id="captionCustom" value="custom">
+                            <label for="captionCustom">Custom SRT file</label>
+                        </div>
+                    </div>
+                    <div class="sub-row" id="srtRow" style="margin-top:8px; display:none;">
+                        <button type="button" class="file-pick" onclick="document.getElementById('srtInput').click()">Select .srt</button>
+                        <span class="file-pick-name" id="srtFilename">No file</span>
+                        <input type="file" id="srtInput" name="srt" accept=".srt" style="display:none">
+                    </div>
+                    <div class="sub-row" style="margin-top:8px;">
+                        <span class="sub-label">Language:</span>
+                        <select id="captionLang">
+                            <option value="hi">Hindi</option>
+                            <option value="en">English</option>
+                            <option value="ur">Urdu</option>
+                            <option value="pa">Punjabi</option>
+                            <option value="ta">Tamil</option>
+                            <option value="te">Telugu</option>
+                            <option value="bn">Bengali</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Process -->
+            <div class="card">
+                <button type="submit" class="process-btn" id="processBtn">▶ Process Video</button>
+
+                <div class="progress-section" id="progressSection">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-status" id="progressStatus">Starting...</div>
+                </div>
+
+                <div class="result-section" id="resultSection">
+                    <a class="download-btn" id="downloadBtn" href="#">📥 Download Video</a>
+                    <div class="result-msg" id="resultMsg"></div>
+                </div>
+
+                <div class="error-box" id="errorBox"></div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // ─── Elements ───
+        const form = document.getElementById('editorForm');
+        const videoInput = document.getElementById('videoInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadLabel = document.getElementById('uploadLabel');
+        const uploadFilename = document.getElementById('uploadFilename');
+        const videoInfo = document.getElementById('videoInfo');
+        const musicInput = document.getElementById('musicInput');
+        const srtInput = document.getElementById('srtInput');
+        const processBtn = document.getElementById('processBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressStatus = document.getElementById('progressStatus');
+        const resultSection = document.getElementById('resultSection');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resultMsg = document.getElementById('resultMsg');
+        const errorBox = document.getElementById('errorBox');
+
+        // ─── Toggle logic ───
+        const toggles = [
+            { id: 'cropToggle', controls: 'cropControls' },
+            { id: 'tintToggle', controls: 'tintControls' },
+            { id: 'musicToggle', controls: 'musicControls' },
+            { id: 'watermarkToggle', controls: 'watermarkControls' },
+            { id: 'captionsToggle', controls: 'captionsControls' },
+        ];
+
+        toggles.forEach(({ id, controls }) => {
+            const checkbox = document.getElementById(id);
+            const panel = document.getElementById(controls);
+            checkbox.addEventListener('change', () => {
+                panel.classList.toggle('visible', checkbox.checked);
+            });
+        });
+
+        // Caption mode toggle
+        document.querySelectorAll('input[name="captionMode"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.getElementById('srtRow').style.display =
+                    document.getElementById('captionCustom').checked ? 'flex' : 'none';
+            });
+        });
+
+        // Range labels
+        document.getElementById('cropPosition').addEventListener('input', e => {
+            const v = parseFloat(e.target.value);
+            document.getElementById('cropPosLabel').textContent =
+                v < 0.3 ? 'Top' : v > 0.7 ? 'Bottom' : 'Center';
+        });
+        document.getElementById('tintOpacity').addEventListener('input', e => {
+            document.getElementById('tintOpacityLabel').textContent =
+                Math.round(parseFloat(e.target.value) * 100) + '%';
+        });
+
+        // File display
+        videoInput.addEventListener('change', () => {
+            if (videoInput.files.length) {
+                const f = videoInput.files[0];
+                uploadFilename.textContent = f.name;
+                uploadLabel.textContent = 'File selected:';
+                uploadArea.classList.add('has-file');
+                const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+                videoInfo.textContent = `Size: ${sizeMB} MB  •  Type: ${f.type || f.name.split('.').pop()}`;
+                videoInfo.style.display = 'block';
+            }
+        });
+        musicInput.addEventListener('change', () => {
+            document.getElementById('musicFilename').textContent =
+                musicInput.files.length ? musicInput.files[0].name : 'No file';
+        });
+        srtInput.addEventListener('change', () => {
+            document.getElementById('srtFilename').textContent =
+                srtInput.files.length ? srtInput.files[0].name : 'No file';
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor = 'var(--accent)'; });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = ''; });
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '';
+            if (e.dataTransfer.files.length) {
+                videoInput.files = e.dataTransfer.files;
+                videoInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // ─── Form submit ───
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+            resultSection.classList.remove('visible');
+
+            // Validate
+            if (!videoInput.files.length) { showError('Please select a video file.'); return; }
+            if (document.getElementById('musicToggle').checked && !musicInput.files.length) {
+                showError('Background music enabled but no music file selected.'); return;
+            }
+            if (document.getElementById('watermarkToggle').checked && !document.getElementById('channelName').value.trim()) {
+                showError('Watermark enabled but no channel name entered.'); return;
+            }
+            if (document.getElementById('captionsToggle').checked &&
+                document.getElementById('captionCustom').checked &&
+                !srtInput.files.length) {
+                showError('Custom captions selected but no SRT file uploaded.'); return;
+            }
+
+            // Build FormData
+            const fd = new FormData();
+            fd.append('video', videoInput.files[0]);
+            fd.append('crop', document.getElementById('cropToggle').checked);
+            fd.append('crop_position', document.getElementById('cropPosition').value);
+            fd.append('tint', document.getElementById('tintToggle').checked);
+            fd.append('tint_color', document.getElementById('tintColor').value);
+            fd.append('tint_opacity', document.getElementById('tintOpacity').value);
+            fd.append('music_enabled', document.getElementById('musicToggle').checked);
+            if (musicInput.files.length) fd.append('music', musicInput.files[0]);
+            fd.append('music_volume', '0.2');
+            fd.append('watermark', document.getElementById('watermarkToggle').checked);
+            fd.append('channel_name', document.getElementById('channelName').value.trim());
+            fd.append('captions', document.getElementById('captionsToggle').checked);
+            fd.append('caption_mode', document.querySelector('input[name="captionMode"]:checked').value);
+            fd.append('caption_lang', document.getElementById('captionLang').value);
+            if (srtInput.files.length) fd.append('srt', srtInput.files[0]);
+
+            // Start upload
+            processBtn.disabled = true;
+            processBtn.textContent = 'Uploading...';
+            progressSection.classList.add('visible');
+            progressFill.style.width = '0%';
+            progressStatus.textContent = 'Uploading video...';
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Upload failed.');
+
+                const jobId = data.job_id;
+                processBtn.textContent = 'Processing...';
+                pollStatus(jobId);
+            } catch (err) {
+                showError(err.message);
+                resetBtn();
+            }
+        });
+
+        // ─── Poll status ───
+        function pollStatus(jobId) {
+            const interval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/status/${jobId}`);
+                    const data = await res.json();
+
+                    progressFill.style.width = data.progress + '%';
+                    progressStatus.textContent = data.message;
+
+                    if (data.status === 'done') {
+                        clearInterval(interval);
+                        progressFill.style.width = '100%';
+                        progressFill.style.background = 'var(--success)';
+                        progressStatus.textContent = '✅ Complete!';
+                        downloadBtn.href = `/download/${jobId}`;
+                        resultMsg.textContent = 'Your Shorts video is ready.';
+                        resultSection.classList.add('visible');
+                        resetBtn();
+                    } else if (data.status === 'error') {
+                        clearInterval(interval);
+                        progressFill.style.background = 'var(--error)';
+                        showError(data.message);
+                        resetBtn();
+                    }
+                } catch (err) {
+                    clearInterval(interval);
+                    showError('Connection lost. Check server logs.');
+                    resetBtn();
+                }
+            }, 1500);
+        }
+
+        // ─── Helpers ───
+        function showError(msg) { errorBox.textContent = msg; errorBox.classList.add('visible'); }
+        function hideError() { errorBox.classList.remove('visible'); }
+        function resetBtn() { processBtn.disabled = false; processBtn.textContent = '▶ Process Video'; }
+    </script>
+</body>
+</html>
