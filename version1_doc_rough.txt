@@ -1,0 +1,142 @@
+AI Video Automation App — V1 Project Document
+1. Project Overview
+
+Build a desktop application that allows a user to:
+
+Upload a video
+Choose editing options
+Automatically process the video
+Export a Shorts-ready video
+
+This is Core Version 1 (no Telegram yet).
+
+2. Goals (V1)
+Simple UI
+Upload video
+Apply automated edits
+Export final video
+Reusable default settings
+3. Features (V1)
+Required
+Upload video file
+Crop to Shorts (9:16)
+Resize to 1080x1920
+Add captions (optional)
+Add background music (optional)
+Add tint color (optional)
+Add channel name watermark
+Export processed video
+Optional but good for V1
+Manual crop slider
+Preview frame
+Progress bar
+Default settings
+4. User Flow
+User opens app
+→ Upload video
+→ Select options
+→ Click "Process"
+→ App processes video
+→ Export final video
+5. UI Layout (Simple)
+---------------------------------
+ AI Shorts Editor
+---------------------------------
+
+[ Upload Video ]
+
+☑ Crop to Shorts
+☐ Add Captions
+☐ Add Background Music
+☐ Add Tint
+☐ Add Channel Name
+
+Tint Color: [dropdown]
+Music File: [select]
+Channel Name: [text input]
+
+[ Process Video ]
+
+Progress: ------
+Output: [Open Folder]
+6. Editing Options Behavior
+Crop to Shorts
+Center crop
+9:16 ratio
+Default ON
+Captions
+Auto generate subtitles
+Burn into video
+Background Music
+Mix at low volume
+Loop if shorter than video
+Tint
+Apply color overlay
+Adjustable opacity (default 20%)
+Channel Name
+Bottom center
+Small watermark
+Semi transparent
+7. Default Settings
+Resolution: 1080x1920
+FPS: 30
+Audio: keep original
+Music volume: 20%
+Tint opacity: 20%
+Font: bold sans-serif
+8. Technical Stack (Recommended)
+UI: Python GUI
+Processing: FFmpeg
+Captions: Whisper (optional for V1)
+Language: Python
+9. Folder Structure
+project/
+ ├── app.py
+ ├── ui/
+ │   └── layout.py
+ ├── engine/
+ │   └── processor.py
+ ├── assets/
+ │   ├── music/
+ │   └── fonts/
+ ├── output/
+ └── temp/
+10. Processing Pipeline
+Input video
+→ Crop
+→ Resize
+→ Add captions (optional)
+→ Add tint (optional)
+→ Add music (optional)
+→ Add watermark
+→ Export output
+11. Functional Requirements
+Must accept mp4 input
+Must output mp4
+Must not crash if option disabled
+Must auto-clean temp files
+Must show processing status
+12. Future Features (Not V1)
+Telegram bot integration
+Batch processing
+Auto upload to YouTube
+Preset templates
+AI highlight detection
+13. Success Criteria
+
+V1 is complete when:
+
+Upload works
+Editing options work
+Video exports correctly
+UI usable
+No manual FFmpeg needed
+14. V1 Priority Order
+Upload video
+Crop to shorts
+Export video
+Add watermark
+Add music
+Add tint
+Add captions
+UI polish
